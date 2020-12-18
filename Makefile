@@ -3,13 +3,13 @@ NVCXX = nvc++
 
 NVARCH = cc70
 
-CXXCOPT_SKL  = -O2 -mavx512f -std=c++17 -fopenmp -I.
-CXXCOPT_HSW  = -O2 -mavx2 -mfma -std=c++17 -fopenmp -I.
+CXXCOPT_SKL  = -O2 -mavx512f -std=c++17 -fopenmp 
+CXXCOPT_HSW  = -O2 -mavx2 -mfma -std=c++17 -fopenmp
 LDFLAG =  -lm  -fopenmp -L/opt/intel/tbb-gnu9.3/lib -ltbb
 
 NVCXXOPT = -O2 -std=c++17 -stdpar -gpu=$(NVARCH) -I.
 
-INC = -I.
+INC = -I./include
 
 all: pstl_stencil_test.avx512 pstl_stencil_test.avx2 pstl_stencil_test.$(NVARCH)
 
