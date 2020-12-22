@@ -3,8 +3,9 @@ NVCXX = nvc++
 
 NVARCH = cc70
 
-CXXCOPT_SKL  = -O2 -mavx512f -std=c++17 -fopenmp 
-CXXCOPT_HSW  = -O2 -mavx2 -mfma -std=c++17 -fopenmp
+#note -O2 option led to a substantial performance degradation for (gnu) x86 backend 
+CXXCOPT_SKL  = -O3 -mavx512f -std=c++17 -fopenmp 
+CXXCOPT_HSW  = -O3 -mavx2 -mfma -std=c++17 -fopenmp
 LDFLAG =  -lm  -fopenmp -L/opt/intel/tbb-gnu9.3/lib -ltbb
 
 NVCXXOPT = -O2 -std=c++17 -stdpar -gpu=$(NVARCH) -I.
