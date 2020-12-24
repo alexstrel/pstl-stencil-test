@@ -55,8 +55,8 @@ int main(){
   const int outer_range = stencil_policy == StencilPolicy::DefaultPolicy ? param.GetVol() : param.GetSurface(0,1);
   const int inner_range = stencil_policy == StencilPolicy::DefaultPolicy ? 0 : nd[2];
 #else
-  constexpr StencilPolicy stencil_policy = StencilPolicy::YZLoopPolicy;
-  //constexpr StencilPolicy stencil_policy = StencilPolicy::DefaultPolicy;
+  //constexpr StencilPolicy stencil_policy = StencilPolicy::YZLoopPolicy;
+  constexpr StencilPolicy stencil_policy = StencilPolicy::DefaultPolicy;
 
   const int outer_range = stencil_policy == StencilPolicy::DefaultPolicy ? param.GetVol() : param.GetSurface(1,2);
   const int inner_range = stencil_policy == StencilPolicy::DefaultPolicy ? 0 : nd[0];

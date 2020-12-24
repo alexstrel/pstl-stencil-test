@@ -39,10 +39,16 @@ class FwdEulerIters{
       for(int i = 0; i < nsteps; i++) {
         auto &func = (i & 1) == 0 ? *even_t_func_ptr : *odd_t_func_ptr;
 
-        std::for_each(policy,
-                      impl::counting_iterator(0),
-                      impl::counting_iterator(outer_range),
-                      [&func] (const int i) {return func.template operator()<SP>(i);});
+        auto in = (i & 1) == 0 ? v2.data() : v1.data();
+	auto out= (i & 1) == 0 ? v1.data() : v2.data();
+        std::transform(policy,
+                      in,
+		      in+outer_range,
+                      out,
+		      out,
+                      [&func, &in] (const auto &in_, auto &out_) {
+		        const auto i = &in_ - in; //deduce current index
+		        return func.template operator()<SP>(i);});
       }
       return;
     }

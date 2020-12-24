@@ -96,18 +96,18 @@ struct GenericNDStencil {
   }
 
 
-  inline void compute_stencil(const std::array<int, D> &x, const int i) {
+  inline T compute_stencil(const std::array<int, D> &x, const int i) {
     //if constexpr (D != 3) { std::cout << "Stencil dimensionality is not supported." << std::endl; exit(-1); }
 
     switch(ST) {
       case StencilType::FaceCentered  :
-        out[i] = c0*in[i]+c1*add_face_neighbors(x,i);
+        return c0*in[i]+c1*add_face_neighbors(x,i);
         break;
       case StencilType::FaceEdgeCentered :
-        out[i] = c0*in[i]+c1*(add_face_neighbors(x,i)+0.5*add_edge_neighbors(x,i));
+        return c0*in[i]+c1*(add_face_neighbors(x,i)+0.5*add_edge_neighbors(x,i));
         break;
       case StencilType::FaceEdgeCornerCentered :
-        out[i] = c0*in[i]+c1*(add_face_neighbors(x,i)+0.5*add_edge_neighbors(x,i)+_1div3_*add_corner_neighbors(x,i));
+        return c0*in[i]+c1*(add_face_neighbors(x,i)+0.5*add_edge_neighbors(x,i)+_1div3_*add_corner_neighbors(x,i));
         break;
       default :
         exit(-1);
@@ -116,14 +116,16 @@ struct GenericNDStencil {
   }
 
   template <StencilPolicy spolicy = StencilPolicy::DefaultPolicy>
-  typename std::enable_if<D == 3, void>::type operator()(const int i){//
+  typename std::enable_if<D == 3, T>::type operator()(const int i){//
      std::array<int, D> x{0};
+
+     T res = static_cast<T>(0.0);
 
      switch(spolicy) {
        case StencilPolicy::DefaultPolicy :
          {
            in.Indx2Coord(x, i);
-           compute_stencil(x, i);
+           res = compute_stencil(x, i);
          }
          break;
        case StencilPolicy::XYLoopPolicy :
@@ -135,7 +137,7 @@ struct GenericNDStencil {
            for(int l = 0; l < inner_loop_range; l++){
              x[inner_dim] = l;
              const int s = real_2d_idx + l*inner_dim_stride;
-             compute_stencil(x, s);
+             res = compute_stencil(x, s);
            }
          }
          break;
@@ -144,6 +146,6 @@ struct GenericNDStencil {
          break;
      }
 
-     return;
+     return res;
   }
 };
