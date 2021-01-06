@@ -1,6 +1,6 @@
 #pragma once
 
-template<typename T, StencilType ST>
+template<typename T, StencilType StTp>
 struct HK3DParams{
   const MDLatticeParam<3> &lattice;
 
@@ -12,12 +12,12 @@ struct HK3DParams{
 
   HK3DParams(const MDLatticeParam<3> &l, const T kappa, const T length, const T tinterval, const int nsteps) : lattice(l), dl{length / (l.Extent(0)+1.0), length / (l.Extent(1)+1.0), length / (l.Extent(2)+1.0)}, dt( tinterval / nsteps) {
     c1 = kappa*dt/(dl[0]*dl[0]);
-    if(ST == StencilType::FaceCentered){
+    if(StTp == StencilType::FaceCentered){
       c0 = 1.0 - 6*c1;
-    } else if (ST == StencilType::FaceEdgeCentered) {
+    } else if (StTp == StencilType::FaceEdgeCentered) {
       c0 = 1.0 - 4*c1;
       c1 = c1 / 3.0;//?
-    } else if (ST == StencilType::FaceEdgeCornerCentered) {
+    } else if (StTp == StencilType::FaceEdgeCornerCentered) {
       c0 = 1.0 - (44.0 / 13)*c1;
       c1 = (3.0*c1) / 13.0;//?
     }

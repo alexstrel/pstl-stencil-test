@@ -2,11 +2,11 @@
 
 #include <enums.h>
 
-template<int d>
+template<int D>
 class MDLatticeParam {
   private :
-    static constexpr int Ndim = d;
-    std::array<int, d> nd;
+    static constexpr int Ndim = D;
+    std::array<int, D> nd;
 
     BCType bc;
     OrderType order;
@@ -19,12 +19,12 @@ class MDLatticeParam {
   public:
     explicit MDLatticeParam() : nd{0}, bc{BCType::Undefined}, order{OrderType::Undefined}, parity(false), vol(0), volCB(0){}
 
-    MDLatticeParam(const std::array<int, d> nd_, BCType bc_ = BCType::Dirichlet, OrderType order_ = OrderType::Lexicographic, bool parity = false) : nd{nd_}, bc{bc_}, order(order_), parity(parity) {
+    MDLatticeParam(const std::array<int, D> nd_, BCType bc_ = BCType::Dirichlet, OrderType order_ = OrderType::Lexicographic, bool parity = false) : nd{nd_}, bc{bc_}, order(order_), parity(parity) {
       vol = 1;
       for(auto i : nd) vol *= i;
       volCB = parity ? vol : vol / 2;
     }
-    MDLatticeParam(const MDLatticeParam<d> &param) :
+    MDLatticeParam(const MDLatticeParam<D> &param) :
 	   nd{param.Extents()},
      bc(param.GetBC()),
      order(param.GetOrder()),
@@ -50,14 +50,16 @@ class MDLatticeParam {
 
 };
 
-template<int d>
+template<typename T, int M, int D>
 class Grid {
   private :
-    const MDLatticeParam<d> &param;
+    const MDLatticeParam<D> &param;
     int nSites;
 
   public:
-    Grid(const MDLatticeParam<d> &param_) : param(param_){
+    using RegType = T;
+
+    Grid(const MDLatticeParam<D> &param_) : param(param_){
       //number of regs:
       nSites = !param.GetParity() ? param.GetVol() : param.GetVolCB();
     }
@@ -65,27 +67,33 @@ class Grid {
     int  NSites() const {return nSites;}
     int  Extent(const int i) const {return param.Extent(i);}
     auto Extents() const {return param.Extents();}
+    int  LattExtent(const int i) const {return i == 0 ? param.Extent(i) / M : param.Extent(i);}
+    auto LattExtents() const {
+      std::array<int, D> latt_dims =  Extents();
+      latt_dims[0] /= M;
+      return latt_dims;
+    }
 
     ~Grid(){}
 };
 
-template<typename T, int d, typename Arg>
-class MDLattice : public Grid<d> {
+template<typename T, int M, int D, typename Arg>
+class MDLattice : public Grid<T, M, D> {
 
-  using MDLattParam = MDLatticeParam<d>;
+  using MDLattParam = MDLatticeParam<D>;
 
   private :
 
-  std::vector<T> v;
+  std::vector<std::array<T, M>> v;
   //Aux fields:
-  std::vector<T> tmp1;
-  std::vector<T> tmp2;
+  std::vector<std::array<T, M>> tmp1;
+  std::vector<std::array<T, M>> tmp2;
   //Model specific args
   Arg &arg;//arg includes MDLatticeParam.
 
   public:
-    MDLattice(const MDLattParam &param, Arg &arg) : Grid<d>(param), v(param.GetVol()), tmp1(param.GetVol()), tmp2(param.GetVol()), arg(arg) {}
-    MDLattice(const Grid<d> &grid, Arg &arg) : Grid<d>(grid), v(grid.NSites()), tmp1(grid.NSites()), tmp2(grid.NSites()), arg(arg) {}
+    MDLattice(const MDLattParam &param, Arg &arg) : Grid<T, M, D>(param), v(param.GetVol() / M), tmp1(param.GetVol() / M), tmp2(param.GetVol() / M), arg(arg) {}
+    MDLattice(const Grid<T, M, D> &grid, Arg &arg) : Grid<T, M, D>(grid), v(grid.NSites() / M), tmp1(grid.NSites() / M), tmp2(grid.NSites() / M), arg(arg) {}
 
     ~MDLattice() {}
 
@@ -93,24 +101,20 @@ class MDLattice : public Grid<d> {
 
     template<typename Policy>
     void SetColdLattice(const Policy &p, const T &&val){
-      std::fill(p, v.begin(), v.end(), val);
-      std::fill(p, tmp1.begin(), tmp1.end(), val);
-      std::fill(p, tmp2.begin(), tmp2.end(), val);
-    }
+      std::array<T, M> t;
+      std::fill(t.begin(), t.end(), val);
 
-    template<typename Policy>
-    void SetHotLattice(const Policy &p, const T &&val){
-      std::fill(p, v.begin(), v.end(), val);
-      std::fill(p, tmp1.begin(), tmp1.end(), val);
-      std::fill(p, tmp2.begin(), tmp2.end(), val);
+      std::generate(p, v.begin(), v.end(), [&t]() {return t;});
+      std::generate(p, tmp1.begin(), tmp1.end(), [&t]() {return t;});
+      std::generate(p, tmp2.begin(), tmp2.end(), [&t]() {return t;});
     }
 
     //Collection of default accessors:
-    inline T& GetLattPoint(const int i){ return v[i];}
-    inline T& GetTmp1Point(const int i){ return tmp1[i];}
-    inline T& GetTmp2Point(const int i){ return tmp2[i];}
+    inline std::array<T, M>& GetLattPoint(const int i){ return v[i];}
+    inline std::array<T, M>& GetTmp1Point(const int i){ return tmp1[i];}
+    inline std::array<T, M>& GetTmp2Point(const int i){ return tmp2[i];}
 
-    std::vector<T>& V()   { return v;   }
-    std::vector<T>& Tmp1(){ return tmp1;}
-    std::vector<T>& Tmp2(){ return tmp2;}
+    std::vector<std::array<T, M> >& V()   { return v;   }
+    std::vector<std::array<T, M> >& Tmp1(){ return tmp1;}
+    std::vector<std::array<T, M> >& Tmp2(){ return tmp2;}
 };

@@ -14,6 +14,5 @@ enum class StencilType {
   FaceEdgeCentered = 19, //1d - NA, 2d - NA, 3d - 19pt stencils
   FaceEdgeCornerCentered = 27//1d - NA, 2d - NA, 3d - 27pt stencils
 };
-enum class StencilPolicy {DefaultPolicy, Cache2DBlockingPolicy, Cache2p5DBlockingPolicy, Cache3DBlockingPolicy, Cache3p5DBlockingPolicy, XYLoopPolicy, YZLoopPolicy, YLoopPolicy};
+enum class StencilPolicy {DefaultPolicy, Cache2DBlockingPolicy, Cache2p5DBlockingPolicy, Cache3DBlockingPolicy, Cache3p5DBlockingPolicy};
 enum class Shift         {NoShift=0, ShiftXp1=+1, ShiftXm1=-1, ShiftYp1=+2, ShiftYm1=-2, ShiftZp1=+3, ShiftZm1=-3, ShiftTp1=+4, ShiftTm1=-4};
-enum class Surface       {XYPlane, YZPlane};

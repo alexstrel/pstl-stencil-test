@@ -23,6 +23,11 @@
 int main(){
   constexpr auto dims  = 3;
   constexpr auto gridsz= 256;
+#ifdef __NVCOMPILER_CUDA__
+  constexpr auto inner_range = 1;//better 2 for double and 4 for floats
+#else
+  constexpr auto inner_range = gridsz / 4;
+#endif
   constexpr auto stencil_type = StencilType::FaceCentered;
 
   using Float=float;
@@ -31,7 +36,7 @@ int main(){
   const std::array<int, dims> nd{gridsz, gridsz, gridsz};
 
   const MDLatticeParam<dims> param(nd);
-  Grid<dims> grid(param);
+  Grid<Float, inner_range, dims> grid(param);
 
   const Float kappa     = 0.1;
   const Float length    = 1000.0;
@@ -39,28 +44,19 @@ int main(){
   const int   nsteps    = 6553;
   HKParams HK3DArgs(param, kappa, length, tinterval, nsteps);
   //
-  MDLattice<Float, dims, decltype(HK3DArgs)> hk3d_ref(grid, HK3DArgs);
+  MDLattice<Float, inner_range, dims, decltype(HK3DArgs)> hk3d_ref(grid, HK3DArgs);
   //set volumes:
   auto policy = std::execution::par_unseq;
-  hk3d_ref.SetColdLattice(policy, 1.0);
+  //hk3d_ref.SetColdLattice(policy, 1.0);
 
-  create_field<Float>(hk3d_ref.Tmp1(), hk3d_ref.Extents(), HK3DArgs.dl, kappa, length, 0.0);
+  std::cout << "Start initialization :: " << std::endl;
+
+  create_field<Float, inner_range>(hk3d_ref.Tmp1(), hk3d_ref.Extents(), HK3DArgs.dl, kappa, length, 0.0);
 
   std::cout << "Done initialization :: " << param.GetVol() << std::endl;
 
-#ifdef __NVCOMPILER_CUDA__
-  //constexpr StencilPolicy stencil_policy = StencilPolicy::XYLoopPolicy;
   constexpr StencilPolicy stencil_policy = StencilPolicy::DefaultPolicy;
-
-  const int outer_range = stencil_policy == StencilPolicy::DefaultPolicy ? param.GetVol() : param.GetSurface(0,1);
-  const int inner_range = stencil_policy == StencilPolicy::DefaultPolicy ? 0 : nd[2];
-#else
-  constexpr StencilPolicy stencil_policy = StencilPolicy::YZLoopPolicy;
-  //constexpr StencilPolicy stencil_policy = StencilPolicy::DefaultPolicy;
-
-  const int outer_range = stencil_policy == StencilPolicy::DefaultPolicy ? param.GetVol() : param.GetSurface(1,2);
-  const int inner_range = stencil_policy == StencilPolicy::DefaultPolicy ? 0 : nd[0];
-#endif
+  const int outer_range = param.GetVol() / inner_range;
 
   printf("Running forward Euler iterations for the 3d heat kernel %d times with params [c0=%le , c1=%le] ..\n", nsteps, HK3DArgs.c0, HK3DArgs.c1);
   fflush(stdout);
@@ -68,7 +64,7 @@ int main(){
   // Declare timers
   std::chrono::high_resolution_clock::time_point time_begin, time_end;
 
-  FwdEulerIters<Float, decltype(policy), stencil_type, stencil_policy, dims, HK3DParams> hk_fwd_euler_algo(policy, HK3DArgs, hk3d_ref.V(), hk3d_ref.Tmp1(), outer_range, inner_range);
+  FwdEulerIters<Float, inner_range, decltype(policy), stencil_type, stencil_policy, dims, HK3DParams> hk_fwd_euler_algo(policy, HK3DArgs, hk3d_ref.V(), hk3d_ref.Tmp1(), outer_range);
 
   time_begin = std::chrono::high_resolution_clock::now();
   //launch the compute task
@@ -80,9 +76,9 @@ int main(){
 
   auto &f_final = nsteps & 1 ? hk3d_ref.V() : hk3d_ref.Tmp1();
 
-  create_field<Float>(hk3d_ref.Tmp2(), hk3d_ref.Extents(), HK3DArgs.dl, kappa, length, time);
+  create_field<Float, inner_range>(hk3d_ref.Tmp2(), hk3d_ref.Extents(), HK3DArgs.dl, kappa, length, time);
 
-  double err = accuracy<Float>(hk3d_ref.Tmp2(),f_final);
+  double err = accuracy<Float, inner_range>(hk3d_ref.Tmp2(),f_final);
 
   double elapsed_time = std::chrono::duration_cast<std::chrono::duration<double> >(time_end - time_begin).count();
 

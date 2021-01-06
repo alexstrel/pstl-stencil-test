@@ -1,6 +1,6 @@
 #pragma once
 
-template <typename T, int D>
+template <typename T, int M,  int D>
 class FieldAccessor{
   private :
     T *v;//raw pointer
@@ -15,16 +15,15 @@ class FieldAccessor{
     const int NxNyNzNtmNxNyNz;
 
   public :
-    FieldAccessor(std::vector<T> &latt, const std::array<int, D> &dims) :
-        v(latt.data()), N(dims),
+    FieldAccessor(std::vector<std::array<T, M>> &latt, const std::array<int, D> &dims) :
+        v(reinterpret_cast<T*>(latt.data())), 
+	N(dims),
         NxNy(D > 1 ? dims[0]*dims[1] : 0),
         NxNymNx(D > 1 ? dims[0]*dims[1]-dims[0] : 0),
         NxNyNz(D > 2 ? dims[0]*dims[1]*dims[2] : 0),
         NxNyNzmNxNy(D > 2 ? NxNyNz-NxNy : 0),
         NxNyNzNt(D > 3 ? dims[0]*dims[1]*dims[2]*dims[3] : 0),
-        NxNyNzNtmNxNyNz(D > 3 ? NxNyNzNt-NxNyNz : 0){
-
-        }
+        NxNyNzNtmNxNyNz(D > 3 ? NxNyNzNt-NxNyNz : 0){  }
 
     //works for both nvc++ and g++
     //template recursion (still ugly ...)
@@ -49,7 +48,7 @@ class FieldAccessor{
       }
     }
 
-    T& operator[](const int i) const { return v[i];}
+    T& operator[](const int j) const { return v[j];}
 
     template<Shift face_shift, Shift... other_shifts>
     T& operator()(const std::array<int,D> &x, const int i) const {
@@ -70,41 +69,15 @@ class FieldAccessor{
       x[1] = tmp / N[0];
       x[0] = tmp - x[1]*N[0];
     }
-    //3d version
-    template<int ext_dim>
-    inline int SurfaceIndx2Coord(std::array<int, D> &x, int &j, const int &i) const {
-      j = 0;
-      int stride = 0;
-
-      if(ext_dim == 2) {
-        x[1] = i / N[0];
-
-        x[0] = (i - x[1]*N[0]);
-
-        j = x[0]+x[1]*N[0];
-        stride = NxNy;
-
-      } else if (ext_dim == 0) {
-        x[2] = i / N[1];
-
-        x[1] = (i - x[2]*N[1]);
-
-        j = x[1]*N[0]+x[2]*NxNy;
-        stride = 1;
-
-      }
-
-      return stride;
-    }
 };
 
-template <typename T, int D> struct field_mapper {
+template <typename T, int M, int D> struct field_mapper {
 };
 
-template <int D> struct field_mapper<double, D> {
-  typedef FieldAccessor<double, D> type;
+template <int M, int D> struct field_mapper<double, M, D> {
+  typedef FieldAccessor<double, M, D> type;
 };
 
-template <int D> struct field_mapper<float, D> {
-  typedef FieldAccessor<float, D> type;
+template <int M, int D> struct field_mapper<float, M, D> {
+  typedef FieldAccessor<float, M, D> type;
 };
